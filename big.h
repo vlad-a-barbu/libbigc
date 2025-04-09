@@ -95,9 +95,7 @@ BigInt bigint_add(const BigInt *x, const BigInt *y) {
   int carry = 0;
 
   if (x->ndigits < y->ndigits) {
-    const BigInt *tmp = x;
-    x = y;
-    y = tmp;
+    swap((void **)&x, (void **)&y);
   }
 
   for (size_t i = 0; i < x->ndigits; ++i) {
@@ -116,7 +114,6 @@ BigInt bigint_add(const BigInt *x, const BigInt *y) {
     assert(carry == 1);
     bigint_append_digit(&res, carry, &pack, &plen);
   }
-
   bigint_flush_pack(&res, &pack, &plen);
   res.str = bigint_string(&res);
 

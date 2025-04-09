@@ -2,19 +2,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-size_t strlen(const char *str) {
-  size_t len = 0;
-  for (; *str != '\0'; ++str, ++len) {}
-  return(len);
-}
-
-int streq(const char *s1, const char *s2) {
-  for (; *s1 != '\0' && *s2 != '\0'; ++s1, ++s2) {
-    if (*s1 != *s2) return(0);
-  }
-  return(*s1 == '\0' && *s2 == '\0');
-}
-
 typedef struct {
   char    *buff;
   size_t  len;
@@ -46,4 +33,23 @@ void dynarray_append(DynArray *darr, char val) {
     darr->buff = mem;
   }
   darr->buff[darr->len++] = val;
+}
+
+size_t strlen(const char *str) {
+  size_t len = 0;
+  for (; *str != '\0'; ++str, ++len) {}
+  return(len);
+}
+
+int streq(const char *s1, const char *s2) {
+  for (; *s1 != '\0' && *s2 != '\0'; ++s1, ++s2) {
+    if (*s1 != *s2) return(0);
+  }
+  return(*s1 == '\0' && *s2 == '\0');
+}
+
+void swap(void **x, void **y) {
+  void *tmp = *x;
+  *x = *y;
+  *y = tmp;
 }

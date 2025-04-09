@@ -67,14 +67,39 @@ const char *bigint_string(const BigInt *big) {
   return(mem);
 }
 
-BigInt bigint_init(size_t cap) {
+BigInt bigint_init() {
   BigInt res = {0};
-  res.digits = dynarray_init(cap);
+  res.digits = dynarray_init(BIGINT_INIT_NDIGITS);
   return res;
 }
 
-BigInt bigint_fromstr(const char *str) {
-  BigInt res = bigint_init(BIGINT_INIT_NDIGITS);
+void bigint_deinit(BigInt *big) {
+  assert(big && "invalid bigint");
+  dynarray_deinit(&big->digits);
+  big->ndigits = 0;
+  free((void *)big->str);
+  big->str = NULL;
+}
+
+BigInt bigint_i(int val) {
+  BigInt res = bigint_init();
+  int pack = 0;
+  int pack_len = 0;
+
+  while (val != 0) {
+    int dig = val % 10;
+    bigint_append_digit(&res, dig, &pack, &pack_len);
+    val /= 10;
+  }
+
+  bigint_flush_pack(&res, &pack, &pack_len);
+  res.str = bigint_string(&res);
+
+  return(res);
+}
+
+BigInt bigint_s(const char *str) {
+  BigInt res = bigint_init();
   size_t slen = strlen(str);
   assert(slen > 0);
   int pack = 0;
@@ -93,11 +118,10 @@ BigInt bigint_fromstr(const char *str) {
 }
 
 BigInt bigint_add(const BigInt *x, const BigInt *y) {
-  BigInt res = bigint_init(BIGINT_INIT_NDIGITS);
+  BigInt res = bigint_init();
   int pack = 0;
   int pack_len = 0;
   int carry = 0;
-
   if (x->ndigits < y->ndigits) {
     swap((void **)&x, (void **)&y);
   }
@@ -124,10 +148,38 @@ BigInt bigint_add(const BigInt *x, const BigInt *y) {
   return(res);
 }
 
-void bigint_deinit(BigInt *big) {
-  assert(big && "invalid bigint");
-  dynarray_deinit(&big->digits);
-  big->ndigits = 0;
-  free((void *)big->str);
-  big->str = NULL;
+BigInt bigint_mul(const BigInt *x, const BigInt *y) {
+  BigInt res = bigint_init();
+  if (x->ndigits < y->ndigits) {
+    swap((void **)&x, (void **)&y);
+  }
+
+  for (size_t j = 0; j < y->ndigits; ++j) {
+    BigInt tmp = bigint_init();
+    int tmp_pack = 0;
+    int tmp_pack_len = 0;
+    int carry = 0;
+    for (size_t z = 0; z < j; ++z) {
+      bigint_append_digit(&tmp, 0, &tmp_pack, &tmp_pack_len);
+    }
+    for (size_t i = 0; i < x->ndigits; ++i) {
+      int p = bigint_ith_digit(x, i) * bigint_ith_digit(y, j);
+      if (carry) { 
+        p += carry;
+        carry = 0;
+      }
+      carry += (p / 10);
+      bigint_append_digit(&tmp, (p % 10), &tmp_pack, &tmp_pack_len);
+    }
+    if (carry) {
+      bigint_append_digit(&tmp, carry, &tmp_pack, &tmp_pack_len);
+    }
+    bigint_flush_pack(&tmp, &tmp_pack, &tmp_pack_len);
+    BigInt old = res;
+    res = bigint_add(&res, &tmp);
+    bigint_deinit(&old);
+    bigint_deinit(&tmp);
+  }
+
+  return(res);
 }

@@ -9,6 +9,7 @@ typedef struct {
 } DynArray;
 
 DynArray dynarray_init(size_t cap) {
+  assert(cap > 0 && "invalid capacity");
   DynArray res = {0};
   res.cap = cap;
   char *mem = (char *)malloc(cap);
@@ -28,6 +29,7 @@ void dynarray_deinit(DynArray *darr) {
 void dynarray_append(DynArray *darr, char val) {
   if (darr->len == darr->cap) {
     darr->cap *= 2;
+    assert(darr->cap > 0 && "invalid capacity");
     char *mem = (char *)realloc(darr->buff, darr->cap);
     assert(mem && "malloc failed");
     darr->buff = mem;
@@ -41,11 +43,11 @@ size_t strlen(const char *str) {
   return(len);
 }
 
-int streq(const char *s1, const char *s2) {
-  for (; *s1 != '\0' && *s2 != '\0'; ++s1, ++s2) {
-    if (*s1 != *s2) return(0);
+int streq(const char *str1, const char *str2) {
+  for (; *str1 != '\0' && *str2 != '\0'; ++str1, ++str2) {
+    if (*str1 != *str2) return(0);
   }
-  return(*s1 == '\0' && *s2 == '\0');
+  return(*str1 == '\0' && *str2 == '\0');
 }
 
 void swap(void **x, void **y) {

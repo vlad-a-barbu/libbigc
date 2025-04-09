@@ -8,38 +8,37 @@ typedef struct {
   const char *str;
 } BigInt;
 
-void bigint_flush_pack(BigInt *big, int *pack_out, int *plen_out) {
+void bigint_flush_pack(BigInt *big, int *pack_out, int *pack_len_out) {
   int pack = *pack_out;
-  int plen = *plen_out;
+  int pack_len = *pack_len_out;
 
-  if (plen > 0) {
-    if (plen == 1) {
-      pack <<= 4;
-    }
-    dynarray_append(&big->digits, pack);
-    big->ndigits += plen;
-    *pack_out = 0;
-    *plen_out = 0;
-  }
+  if (pack_len == 0) return;
+  if (pack_len == 1) pack <<= 4;
+
+  dynarray_append(&big->digits, pack);
+  big->ndigits += pack_len;
+
+  *pack_out = 0;
+  *pack_len_out = 0;
 }
 
-void bigint_append_digit(BigInt *big, int dig, int *pack_out, int *plen_out) {
+void bigint_append_digit(BigInt *big, int dig, int *pack_out, int *pack_len_out) {
   assert(dig >= 0 && dig <= 9 && "invalid digit");
   int pack = *pack_out;
-  int plen = *plen_out;
+  int pack_len = *pack_len_out;
 
-  if (plen++ == 1) {
+  if (pack_len++ == 1) {
     pack = (pack << 4) | dig;
   } else {
     pack = dig;
   }
 
-  if (plen == 2) {
-    bigint_flush_pack(big, &pack, &plen);
+  if (pack_len == 2) {
+    bigint_flush_pack(big, &pack, &pack_len);
   }
 
   *pack_out = pack;
-  *plen_out = plen;
+  *pack_len_out = pack_len;
 }
 
 int bigint_ith_digit(const BigInt *big, size_t i) {
@@ -68,30 +67,35 @@ const char *bigint_string(const BigInt *big) {
   return(mem);
 }
 
-BigInt bigint_init(const char *str) {
+BigInt bigint_init(size_t cap) {
   BigInt res = {0};
-  res.digits = dynarray_init(BIGINT_INIT_NDIGITS);
+  res.digits = dynarray_init(cap);
+  return res;
+}
+
+BigInt bigint_fromstr(const char *str) {
+  BigInt res = bigint_init(BIGINT_INIT_NDIGITS);
   size_t slen = strlen(str);
   assert(slen > 0);
   int pack = 0;
-  int plen = 0;
+  int pack_len = 0;
   size_t i = slen - 1;
 
   do {
     int dig = str[i] - '0';
-    bigint_append_digit(&res, dig, &pack, &plen);
+    bigint_append_digit(&res, dig, &pack, &pack_len);
   } while (i-- != 0);
 
-  bigint_flush_pack(&res, &pack, &plen);
+  bigint_flush_pack(&res, &pack, &pack_len);
   res.str = bigint_string(&res);
 
   return(res);
 }
 
 BigInt bigint_add(const BigInt *x, const BigInt *y) {
-  BigInt res = {0};
+  BigInt res = bigint_init(BIGINT_INIT_NDIGITS);
   int pack = 0;
-  int plen = 0;
+  int pack_len = 0;
   int carry = 0;
 
   if (x->ndigits < y->ndigits) {
@@ -107,14 +111,14 @@ BigInt bigint_add(const BigInt *x, const BigInt *y) {
       s++; carry--;
     }
     carry += (s / 10);
-    bigint_append_digit(&res, (s % 10), &pack, &plen);
+    bigint_append_digit(&res, (s % 10), &pack, &pack_len);
   }
 
   if (carry) {
     assert(carry == 1);
-    bigint_append_digit(&res, carry, &pack, &plen);
+    bigint_append_digit(&res, carry, &pack, &pack_len);
   }
-  bigint_flush_pack(&res, &pack, &plen);
+  bigint_flush_pack(&res, &pack, &pack_len);
   res.str = bigint_string(&res);
 
   return(res);

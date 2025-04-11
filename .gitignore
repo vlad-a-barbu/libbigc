@@ -1,3 +1,6 @@
 .vscode
 main.dSYM
 main
+main.exe
+main.pdb
+main.ilk

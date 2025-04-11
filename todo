@@ -1,4 +1,0 @@
-- bigint mul
-- batch add/mul processing instead of digit by digit
-- optimize mem layout of main struct for cache locality
-- benchmarks

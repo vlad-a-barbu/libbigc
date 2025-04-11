@@ -1,6 +1,6 @@
-#include "helpers.h"
+#include "common.h"
 
-#define BIGINT_INIT_NDIGITS 20
+#define BIGINT_INIT_NDIGITS 21
 
 typedef struct {
   DynArray   digits;
@@ -42,14 +42,10 @@ void bigint_append_digit(BigInt *big, int dig, int *pack_out, int *pack_len_out)
 }
 
 int bigint_ith_digit(const BigInt *big, size_t i) {
-  assert(i < big->ndigits);
-  size_t j = i / 2;
-  assert(j < big->digits.len);
-  int pack = 0xFF & big->digits.buff[i / 2];
-  if (i % 2 == 0) {
-    return(pack >> 4);
-  }
-  return(pack & 0xF);
+  size_t pi = i / 2;
+  assert(pi < big->digits.len);
+  int pack = 0xFF & big->digits.buff[pi];
+  return(i % 2 == 0 ? pack >> 4 : pack & 0xF);
 }
 
 const char *bigint_string(const BigInt *big) {
@@ -59,8 +55,7 @@ const char *bigint_string(const BigInt *big) {
   size_t len = 0;
 
   do {
-    int d = bigint_ith_digit(big, i);
-    mem[len++] = d + '0';
+    mem[len++] = bigint_ith_digit(big, i) + '0';
   } while (i-- != 0);
   mem[len] = '\0';
 
@@ -87,8 +82,7 @@ BigInt bigint_i(int val) {
   int pack_len = 0;
 
   while (val != 0) {
-    int dig = val % 10;
-    bigint_append_digit(&res, dig, &pack, &pack_len);
+    bigint_append_digit(&res, val % 10, &pack, &pack_len);
     val /= 10;
   }
 
@@ -99,16 +93,16 @@ BigInt bigint_i(int val) {
 }
 
 BigInt bigint_s(const char *str) {
-  BigInt res = bigint_init();
+  assert(str && "nullptr");
   size_t slen = strlen(str);
   assert(slen > 0);
+  BigInt res = bigint_init();
   int pack = 0;
   int pack_len = 0;
   size_t i = slen - 1;
 
   do {
-    int dig = str[i] - '0';
-    bigint_append_digit(&res, dig, &pack, &pack_len);
+    bigint_append_digit(&res, str[i] - '0', &pack, &pack_len);
   } while (i-- != 0);
 
   bigint_flush_pack(&res, &pack, &pack_len);
@@ -130,16 +124,12 @@ BigInt bigint_add(const BigInt *x, const BigInt *y) {
     int s = i < y->ndigits
       ? bigint_ith_digit(x, i) + bigint_ith_digit(y, i)
       : bigint_ith_digit(x, i);
-    if (carry) { 
-      assert(carry == 1);
-      s++; carry--;
-    }
+    if (carry) { s++; carry--; }
     carry += (s / 10);
     bigint_append_digit(&res, (s % 10), &pack, &pack_len);
   }
 
-  if (carry) {
-    assert(carry == 1);
+  if (carry) { 
     bigint_append_digit(&res, carry, &pack, &pack_len);
   }
   bigint_flush_pack(&res, &pack, &pack_len);
@@ -156,27 +146,29 @@ BigInt bigint_mul(const BigInt *x, const BigInt *y) {
 
   for (size_t j = 0; j < y->ndigits; ++j) {
     BigInt tmp = bigint_init();
-    int tmp_pack = 0;
-    int tmp_pack_len = 0;
+    int pack = 0;
+    int pack_len = 0;
     int carry = 0;
     for (size_t z = 0; z < j; ++z) {
-      bigint_append_digit(&tmp, 0, &tmp_pack, &tmp_pack_len);
+      bigint_append_digit(&tmp, 0, &pack, &pack_len);
     }
     for (size_t i = 0; i < x->ndigits; ++i) {
       int p = bigint_ith_digit(x, i) * bigint_ith_digit(y, j);
-      if (carry) { 
+      if (carry) {  
         p += carry;
         carry = 0;
       }
       carry += (p / 10);
-      bigint_append_digit(&tmp, (p % 10), &tmp_pack, &tmp_pack_len);
+      bigint_append_digit(&tmp, (p % 10), &pack, &pack_len);
     }
     if (carry) {
-      bigint_append_digit(&tmp, carry, &tmp_pack, &tmp_pack_len);
+      bigint_append_digit(&tmp, carry, &pack, &pack_len);
     }
-    bigint_flush_pack(&tmp, &tmp_pack, &tmp_pack_len);
+    bigint_flush_pack(&tmp, &pack, &pack_len);
+
     BigInt old = res;
     res = bigint_add(&res, &tmp);
+
     bigint_deinit(&old);
     bigint_deinit(&tmp);
   }
